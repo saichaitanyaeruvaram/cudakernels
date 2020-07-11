@@ -21,7 +21,8 @@ SET(SOURCE
 )
 
 SET(HEADERS
-	include/common.h	
+	include/common.h
+	include/tests.h	
 	include/kernels.h
 )
 

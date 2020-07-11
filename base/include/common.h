@@ -1,24 +1,6 @@
 #pragma once
 
-#include <thread>
 #include <cuda_runtime_api.h>
-#include <iostream>
-
-// tests
-void testAdd();
-void testAddNPP();
-
-
-
-
-
-
-
-
-
-
-
-
 
 inline bool check(cudaError_t e, int iLine, const char *szFile) {
 	if (e != cudaSuccess) {
@@ -30,9 +12,3 @@ inline bool check(cudaError_t e, int iLine, const char *szFile) {
 }
 
 #define ck(call) check(call, __LINE__, __FILE__)
-
-
-void getDeviceBuffer(int width, int height, int value, void*& buffer, int& step);
-
-void profile(std::function<void()> compute);
-

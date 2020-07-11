@@ -1,12 +1,12 @@
-#include "common.h"
+#include "tests.h"
 #include "kernels.h"
 #include "npp.h"
 
 void testAdd()
 {
-	void* src1;
-	void* src2;
-	void* dst;
+	DeviceBuffer src1;
+	DeviceBuffer src2;
+	DeviceBuffer dst;
 
 	int width = 1920;
 	int height = 1080;
@@ -21,9 +21,9 @@ void testAdd()
 	cudaStream_t stream;
 	ck(cudaStreamCreate(&stream));
 
-	auto src18u = static_cast<uint8_t*>(src1);
-	auto src28u = static_cast<uint8_t*>(src2);
-	auto dst8u = static_cast<uint8_t*>(dst);
+	auto src18u = static_cast<uint8_t*>(src1.data());
+	auto src28u = static_cast<uint8_t*>(src2.data());
+	auto dst8u = static_cast<uint8_t*>(dst.data());
 
 	profile([&]() {
 		launchAddKernel(src18u, src28u, dst8u, step, size, stream);
@@ -35,9 +35,9 @@ void testAdd()
 
 void testAddNPP()
 {
-	void* src1;
-	void* src2;
-	void* dst;
+	DeviceBuffer src1;
+	DeviceBuffer src2;
+	DeviceBuffer dst;
 
 	int width = 1920;
 	int height = 1080;
@@ -55,9 +55,9 @@ void testAddNPP()
 	NppStreamContext 	nppStreamCtx;
 	nppStreamCtx.hStream = stream;
 
-	auto src18u = static_cast<uint8_t*>(src1);
-	auto src28u = static_cast<uint8_t*>(src2);
-	auto dst8u = static_cast<uint8_t*>(dst);
+	auto src18u = static_cast<uint8_t*>(src1.data());
+	auto src28u = static_cast<uint8_t*>(src2.data());
+	auto dst8u = static_cast<uint8_t*>(dst.data());
 
 	profile([&]() {
 		nppiAdd_8u_C1RSfs_Ctx(src18u,

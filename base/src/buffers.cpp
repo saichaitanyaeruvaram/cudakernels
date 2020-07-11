@@ -1,5 +1,6 @@
-#include "common.h"
+#include "tests.h"
 #include "cuda_runtime.h"
+#include "common.h"
 
 int getStep(int width)
 {
@@ -19,13 +20,12 @@ int getSize(int width, int height, int& step)
     return step*height;
 }
 
-void getDeviceBuffer(int width, int height, int value, void*& buffer, int& step)
+void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer, int& step)
 {
     auto size = getSize(width, height, step);
 
-    buffer = nullptr;
-    ck(cudaMalloc(&buffer, size));
-    
-    ck(cudaMemset(buffer, value, size));
+    buffer.init(size);
+        
+    ck(cudaMemset(buffer.data(), value, size));
     ck(cudaDeviceSynchronize());
 }
