@@ -1,0 +1,16 @@
+@echo off
+
+SET CWD=%cd%
+
+SET TEST_NAME=%1
+SET NUMBER_OF_PROCESS=%2
+
+SET CMD_ARGS="_build\Release\cudatest.exe %TEST_NAME%"
+
+echo TEST_NAME=%TEST_NAME% NUMBER_OF_PROCESS=%NUMBER_OF_PROCESS%
+
+FOR /L %%x IN (1,1,%NUMBER_OF_PROCESS%) DO (
+	start cmd /k %CMD_ARGS%
+)
+
+exit
