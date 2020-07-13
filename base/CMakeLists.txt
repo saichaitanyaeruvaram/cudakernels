@@ -14,7 +14,7 @@ SET(NVCUDAToolkit_LIBS
 
 SET(SOURCE
 	src/add.cpp
-	src/buffers.cpp
+	src/BufferHelper.cpp
 	src/profile.cpp
 	src/addkernel.cu
 	src/main.cpp
@@ -24,6 +24,7 @@ SET(HEADERS
 	include/common.h
 	include/tests.h	
 	include/kernels.h
+	include/Buffer.h
 )
 
 include_directories( AFTER SYSTEM include)

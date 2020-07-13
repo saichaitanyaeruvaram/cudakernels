@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "kernels.h"
 #include "npp.h"
+#include <assert.h>
 
 void testAdd()
 {
@@ -24,6 +25,11 @@ void testAdd()
 	auto src18u = static_cast<uint8_t*>(src1.data());
 	auto src28u = static_cast<uint8_t*>(src2.data());
 	auto dst8u = static_cast<uint8_t*>(dst.data());
+
+	launchAddKernel(src18u, src28u, dst8u, step, size, stream);
+	cudaStreamSynchronize(stream);
+
+	assert(copyAndCheckValue(dst, 150));
 
 	profile([&]() {
 		launchAddKernel(src18u, src28u, dst8u, step, size, stream);
@@ -58,6 +64,19 @@ void testAddNPP()
 	auto src18u = static_cast<uint8_t*>(src1.data());
 	auto src28u = static_cast<uint8_t*>(src2.data());
 	auto dst8u = static_cast<uint8_t*>(dst.data());
+
+	nppiAdd_8u_C1RSfs_Ctx(src18u,
+		step,
+		src28u,
+		step,
+		dst8u,
+		step,
+		size,
+		0,
+		nppStreamCtx);
+
+	cudaStreamSynchronize(stream);
+	assert(copyAndCheckValue(dst, 150));
 
 	profile([&]() {
 		nppiAdd_8u_C1RSfs_Ctx(src18u,
