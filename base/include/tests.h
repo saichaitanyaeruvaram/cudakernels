@@ -6,7 +6,7 @@
 #include "Buffer.h"
 
 // tests
-void testAdd();
+void testAdd(int argc, char **argv);
 void testAddNPP();
 
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer, int& step);

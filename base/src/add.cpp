@@ -3,7 +3,7 @@
 #include "npp.h"
 #include <assert.h>
 
-void testAdd()
+void testAdd(int argc, char **argv)
 {
 	DeviceBuffer src1;
 	DeviceBuffer src2;
@@ -26,13 +26,19 @@ void testAdd()
 	auto src28u = static_cast<uint8_t*>(src2.data());
 	auto dst8u = static_cast<uint8_t*>(dst.data());
 
-	launchAddKernel(src18u, src28u, dst8u, step, size, stream);
+	auto method = ADD_BASIC;
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	launchAddKernel(src18u, src28u, dst8u, step, size, stream, method);
 	cudaStreamSynchronize(stream);
 
 	assert(copyAndCheckValue(dst, 150));
 
 	profile([&]() {
-		launchAddKernel(src18u, src28u, dst8u, step, size, stream);
+		launchAddKernel(src18u, src28u, dst8u, step, size, stream, method);
 		cudaStreamSynchronize(stream);
 	});
 

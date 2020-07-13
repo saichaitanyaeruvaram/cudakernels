@@ -55,6 +55,11 @@ public:
 private:
 	int getStep(int width)
 	{
+		if (m_alignSize == 0)
+		{
+			return width;
+		}
+
 		auto rem = width % m_alignSize;
 		if (rem == 0)
 		{
