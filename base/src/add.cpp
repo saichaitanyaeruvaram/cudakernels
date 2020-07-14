@@ -11,13 +11,13 @@ void testAdd(int argc, char **argv)
 
 	int width = 1920;
 	int height = 1080;
-	int step = 0;
 
-	getDeviceBuffer(width, height, 100, src1, step);
-	getDeviceBuffer(width, height, 50, src2, step);
-	getDeviceBuffer(width, height, 0, dst, step);
+	getDeviceBuffer(width, height, 100, src1);
+	getDeviceBuffer(width, height, 50, src2);
+	getDeviceBuffer(width, height, 0, dst);
 
 	NppiSize size = { width, height };
+	int step = src1.step();
 
 	cudaStream_t stream;
 	ck(cudaStreamCreate(&stream));
@@ -35,7 +35,7 @@ void testAdd(int argc, char **argv)
 	launchAddKernel(src18u, src28u, dst8u, step, size, stream, method);
 	cudaStreamSynchronize(stream);
 
-	assert(copyAndCheckValue(dst, 150));
+	copyAndCheckValue(dst, 150);
 
 	profile([&]() {
 		launchAddKernel(src18u, src28u, dst8u, step, size, stream, method);
@@ -53,13 +53,13 @@ void testAddNPP()
 
 	int width = 1920;
 	int height = 1080;
-	int step = 0;
 
-	getDeviceBuffer(width, height, 100, src1, step);
-	getDeviceBuffer(width, height, 50, src2, step);
-	getDeviceBuffer(width, height, 0, dst, step);
+	getDeviceBuffer(width, height, 100, src1);
+	getDeviceBuffer(width, height, 50, src2);
+	getDeviceBuffer(width, height, 0, dst);
 
 	NppiSize size = { width, height };
+	int step = src1.step();
 
 	cudaStream_t stream;
 	ck(cudaStreamCreate(&stream));
@@ -71,7 +71,7 @@ void testAddNPP()
 	auto src28u = static_cast<uint8_t*>(src2.data());
 	auto dst8u = static_cast<uint8_t*>(dst.data());
 
-	nppiAdd_8u_C1RSfs_Ctx(src18u,
+	check_nppstatus(nppiAdd_8u_C1RSfs_Ctx(src18u,
 		step,
 		src28u,
 		step,
@@ -79,13 +79,13 @@ void testAddNPP()
 		step,
 		size,
 		0,
-		nppStreamCtx);
+		nppStreamCtx));
 
-	cudaStreamSynchronize(stream);
-	assert(copyAndCheckValue(dst, 150));
+	ck(cudaStreamSynchronize(stream));
+	copyAndCheckValue(dst, 150);
 
 	profile([&]() {
-		nppiAdd_8u_C1RSfs_Ctx(src18u,
+		check_nppstatus(nppiAdd_8u_C1RSfs_Ctx(src18u,
 			step,
 			src28u,
 			step,
@@ -93,9 +93,9 @@ void testAddNPP()
 			step,
 			size,
 			0,
-			nppStreamCtx);
+			nppStreamCtx));
 
-		cudaStreamSynchronize(stream);
+		ck(cudaStreamSynchronize(stream));
 	});
 
 	ck(cudaStreamDestroy(stream));
