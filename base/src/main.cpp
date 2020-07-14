@@ -18,6 +18,23 @@ int main(int argc, char **argv)
     {
         testAddCNPP();
     }
+	else if (std::string(argv[1]) == "testAddCMulC")
+	{
+		testAddCMulC(argc - 2, argv + 2);
+	}
+	else if (std::string(argv[1]) == "testAddCMulCNPP")
+	{
+		testAddCMulCNPP();
+	}
+	else if (std::string(argv[1]) == "testMulC")
+	{
+		testMulC(argc - 2, argv + 2);
+	}
+	else if (std::string(argv[1]) == "testMulCNPP")
+	{
+		testMulCNPP();
+	}
+
 
 
     return 0;
