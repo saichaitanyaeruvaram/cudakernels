@@ -45,6 +45,48 @@ void testAdd(int argc, char **argv)
 	ck(cudaStreamDestroy(stream));
 }
 
+void testAddC(int argc, char **argv)
+{
+	DeviceBuffer src;
+	DeviceBuffer dst;
+
+	int width = 1920;
+	int height = 1080;
+
+	getDeviceBuffer(width, height, 250, src);
+	getDeviceBuffer(width, height, 0, dst);
+
+	NppiSize size = { width, height };
+	int step = src.step();
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	NppStreamContext 	nppStreamCtx;
+	nppStreamCtx.hStream = stream;
+
+	auto src8u = static_cast<uint8_t*>(src.data());	
+	auto dst8u = static_cast<uint8_t*>(dst.data());
+
+	auto method = ADD_BASIC;
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	launchAddCKernel(src8u, 50, dst8u, step, size, stream, method);
+	cudaStreamSynchronize(stream);
+
+	copyAndCheckValue(dst, 255);
+
+	profile([&]() {
+		launchAddCKernel(src8u, 50, dst8u, step, size, stream, method);
+		cudaStreamSynchronize(stream);
+	});
+
+	ck(cudaStreamDestroy(stream));
+}
+
 void testAddNPP()
 {
 	DeviceBuffer src1;
@@ -94,6 +136,57 @@ void testAddNPP()
 			size,
 			0,
 			nppStreamCtx));
+
+		ck(cudaStreamSynchronize(stream));
+	});
+
+	ck(cudaStreamDestroy(stream));
+}
+
+void testAddCNPP()
+{
+	DeviceBuffer src;
+	DeviceBuffer dst;
+
+	int width = 1920;
+	int height = 1080;
+
+	getDeviceBuffer(width, height, 250, src);
+	getDeviceBuffer(width, height, 0, dst);
+
+	NppiSize size = { width, height };
+	int step = src.step();
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	NppStreamContext 	nppStreamCtx;
+	nppStreamCtx.hStream = stream;
+
+	auto src8u = static_cast<uint8_t*>(src.data());	
+	auto dst8u = static_cast<uint8_t*>(dst.data());
+
+	check_nppstatus(nppiAddC_8u_C1RSfs_Ctx(src8u,
+		step,
+		50,
+		dst8u,
+		step,
+		size,
+		0,
+		nppStreamCtx));
+
+	ck(cudaStreamSynchronize(stream));
+	copyAndCheckValue(dst, 255);
+
+	profile([&]() {
+		check_nppstatus(nppiAddC_8u_C1RSfs_Ctx(src8u,
+		step,
+		50,
+		dst8u,
+		step,
+		size,
+		0,
+		nppStreamCtx));
 
 		ck(cudaStreamSynchronize(stream));
 	});

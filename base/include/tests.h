@@ -8,6 +8,8 @@
 // tests
 void testAdd(int argc, char **argv);
 void testAddNPP();
+void testAddC(int argc, char **argv);
+void testAddCNPP();
 
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer);
 void profile(std::function<void()> compute);

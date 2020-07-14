@@ -10,6 +10,15 @@ int main(int argc, char **argv)
     {
         testAddNPP();
     }
+    else if(std::string(argv[1]) == "testAddC")
+    {
+        testAddC(argc - 2, argv + 2);
+    }
+    else if(std::string(argv[1]) == "testAddCNPP")
+    {
+        testAddCNPP();
+    }
+
 
     return 0;
 }
