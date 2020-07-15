@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 	else if (std::string(argv[1]) == "testAddCMulC")
 	{
 		testAddCMulC(argc - 2, argv + 2);
-	}
+	} 
 	else if (std::string(argv[1]) == "testAddCMulCNPP")
 	{
 		testAddCMulCNPP();
@@ -33,6 +33,10 @@ int main(int argc, char **argv)
 	else if (std::string(argv[1]) == "testMulCNPP")
 	{
 		testMulCNPP();
+	}
+	else if (std::string(argv[1]) == "testBrightnessContrast_uv_int8")
+	{
+		testBrightnessContrast_uv_int8(argc - 2, argv + 2);
 	}
 
 

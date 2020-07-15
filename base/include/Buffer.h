@@ -27,6 +27,11 @@ public:
 		m_size = getSize(width, height, m_step);		
 	}
 
+	virtual void memset(int value)
+	{
+
+	}
+
 	void *data()
 	{
 		return m_data;
@@ -107,6 +112,12 @@ public:
 		Buffer::init(width, height);
 		ck(cudaMalloc(&m_data, m_size));
 	}	
+
+	void memset(int value)
+	{
+		ck(cudaMemset(m_data, value, m_size));
+		ck(cudaDeviceSynchronize());
+	}
 };
 
 class HostBuffer: public Buffer

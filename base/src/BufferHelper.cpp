@@ -6,9 +6,7 @@
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer)
 {
     buffer.init(width, height);
-        
-    ck(cudaMemset(buffer.data(), value, buffer.size()));
-    ck(cudaDeviceSynchronize());
+	buffer.memset(value);    
 }
 
 bool copyAndCheckValue(DeviceBuffer& buffer, int value)

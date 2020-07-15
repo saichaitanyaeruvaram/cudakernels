@@ -216,6 +216,35 @@ __global__ void addcmulc_4k(const uchar4* src, const Npp8u addValue, const Npp32
 	dstValue.w = temp > 255 ? 255 : temp;
 }
 
+#define ADDCMULC_INT8_4k_OP( srcValue, dstValue, mulValue )                                                                       \
+    do                                                                                                             						   \
+    {                                                                                                                                      \
+      int32_t temp = (srcValue - 128)*mulValue;																				   \
+	  temp = temp > 127 ? 127: temp;																									   \
+	  temp = temp < -128 ? 0: temp+128;                                                                                                    \
+	  dstValue = temp;																													   \
+    } while (0)																									   			
+
+
+__global__ void brightnesscontrast_uv_int8_4k(const uchar4* src, const Npp32s addValue, const Npp32f mulValue, uchar4* dst, int step, int width, int height)
+{
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if (x >= width || y >= height)
+	{
+		return;
+	}
+
+	int offset = y * step + x;
+	auto& srcValue = src[offset];
+	auto &dstValue = dst[offset];
+	ADDCMULC_INT8_4k_OP(srcValue.x, dstValue.x, mulValue);
+	ADDCMULC_INT8_4k_OP(srcValue.y, dstValue.y, mulValue);
+	ADDCMULC_INT8_4k_OP(srcValue.z, dstValue.z, mulValue);
+	ADDCMULC_INT8_4k_OP(srcValue.w, dstValue.w, mulValue);
+}
+
 void launchAddKernel(const Npp8u* src1, const Npp8u* src2, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method)
 {
 	if (method == BASIC)
@@ -282,7 +311,7 @@ void launchMulCKernel(const Npp8u* src1, const Npp32u value, Npp8u* dst, int ste
 	}
 }
 
-void launchAddCMulCKernel(const Npp8u* src, const Npp32u addValue, const Npp32u mulValue, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method)
+void launchAddCMulCKernel(const Npp8u* src, const Npp32u addValue, const Npp32f mulValue, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method)
 {
 	if (method == BASIC)
 	{
@@ -297,8 +326,23 @@ void launchAddCMulCKernel(const Npp8u* src, const Npp32u addValue, const Npp32u 
 		dim3 block(32, 32);
 		dim3 grid((width + block.x - 1) / block.x, (size.height + block.y - 1) / block.y);
 
-		const Npp32u simdvalue = addValue | addValue << 8 | addValue << 16 | addValue << 24;
+		addcmulc_4k << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(src), addValue, mulValue, reinterpret_cast<uchar4*>(dst), step, width, size.height);
+	}
+}
 
-		addcmulc_4k << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(src), simdvalue, mulValue, reinterpret_cast<uchar4*>(dst), step, width, size.height);
+void launchBrightnessContrast_uv_int8(const Npp8u* src, const Npp32s addValue, const Npp32f mulValue, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method)
+{
+	if (method == BASIC)
+	{
+	
+	}
+	else if (method == M_4K)
+	{
+		auto width = size.width >> 2;
+		step = step >> 2;
+		dim3 block(32, 32);
+		dim3 grid((width + block.x - 1) / block.x, (size.height + block.y - 1) / block.y);
+
+		brightnesscontrast_uv_int8_4k << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(src), addValue, mulValue, reinterpret_cast<uchar4*>(dst), step, width, size.height);
 	}
 }

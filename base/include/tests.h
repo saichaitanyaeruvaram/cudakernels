@@ -11,6 +11,7 @@ void testAddNPP();
 void testAddC(int argc, char **argv);
 void testAddCNPP();
 void testAddCMulC(int argc, char **argv);
+void testBrightnessContrast_uv_int8(int argc, char **argv);
 void testAddCMulCNPP();
 void testMulC(int argc, char **argv);
 void testMulCNPP();

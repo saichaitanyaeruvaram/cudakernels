@@ -144,6 +144,70 @@ void testAddCMulC(int argc, char **argv)
 	ck(cudaStreamDestroy(stream));
 }
 
+void testBrightnessContrast_uv_int8(int argc, char **argv)
+{
+	DeviceBuffer src;
+	DeviceBuffer dst;
+
+	int width = 1920;
+	int height = 1080;
+
+	getDeviceBuffer(width, height, 134, src);
+	getDeviceBuffer(width, height, 0, dst);
+
+	NppiSize size = { width, height };
+	int step = src.step();
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	NppStreamContext nppStreamCtx;
+	nppStreamCtx.hStream = stream;
+
+	auto src8u = static_cast<uint8_t *>(src.data());
+	auto dst8u = static_cast<uint8_t *>(dst.data());
+
+	auto method = M_4K;
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	src.memset(134);
+	launchBrightnessContrast_uv_int8(src8u, 50, 0.5, dst8u, step, size, stream, method);
+	cudaStreamSynchronize(stream);
+	copyAndCheckValue(dst, 131);
+	src.memset(122);
+	launchBrightnessContrast_uv_int8(src8u, 50, 0.5, dst8u, step, size, stream, method);
+	cudaStreamSynchronize(stream);
+	copyAndCheckValue(dst, 125);
+
+	// > 127
+	src.memset(128+90);
+	launchBrightnessContrast_uv_int8(src8u, 50, 3, dst8u, step, size, stream, method);
+	cudaStreamSynchronize(stream);
+	copyAndCheckValue(dst, 255);
+	
+	// < -128
+	src.memset(128 - 90);
+	launchBrightnessContrast_uv_int8(src8u, 50, 3, dst8u, step, size, stream, method);
+	cudaStreamSynchronize(stream);
+	copyAndCheckValue(dst, 0);
+
+	// > -128
+	src.memset(128 - 30);
+	launchBrightnessContrast_uv_int8(src8u, -100, 3, dst8u, step, size, stream, method);
+	cudaStreamSynchronize(stream);
+	copyAndCheckValue(dst, 38);
+
+	profile([&]() {
+		launchBrightnessContrast_uv_int8(src8u, 50, 2, dst8u, step, size, stream, method);
+		cudaStreamSynchronize(stream);
+	});
+
+	ck(cudaStreamDestroy(stream));
+}
+
 void testMulC(int argc, char **argv)
 {
 	DeviceBuffer src;
