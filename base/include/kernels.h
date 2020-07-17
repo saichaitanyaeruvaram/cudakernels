@@ -13,3 +13,4 @@ void launchAddCKernel(const Npp8u* src1, const Npp32u value, Npp8u* dst, int ste
 void launchMulCKernel(const Npp8u* src1, const Npp32u value, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method);
 void launchAddCMulCKernel(const Npp8u* src, const Npp32u addValue, const Npp32f mulValue, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method);
 void launchBrightnessContrast_uv_int8(const Npp8u* src, const Npp32s addValue, const Npp32f mulValue, Npp8u* dst, int step, NppiSize size, cudaStream_t stream, std::string method);
+void launch_yuv420torgb(const Npp8u* Y, const Npp8u* U, const Npp8u* V, Npp8u* R, Npp8u* G, Npp8u* B, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method);

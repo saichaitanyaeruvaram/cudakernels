@@ -17,6 +17,8 @@ SET(SOURCE
 	src/BufferHelper.cpp
 	src/profile.cpp
 	src/addkernel.cu
+	src/effectsKernel.cu
+	src/colorconversion.cpp
 	src/main.cpp
 )
 

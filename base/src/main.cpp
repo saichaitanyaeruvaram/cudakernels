@@ -38,6 +38,14 @@ int main(int argc, char **argv)
 	{
 		testBrightnessContrast_uv_int8(argc - 2, argv + 2);
 	}
+	else if (std::string(argv[1]) == "testYUV420ToRGBNPP")
+	{
+		testYUV420ToRGBNPP();
+	}
+	else if (std::string(argv[1]) == "testYUV420ToRGB")
+	{
+		testYUV420ToRGB(argc - 2, argv + 2);
+	}
 
 
 

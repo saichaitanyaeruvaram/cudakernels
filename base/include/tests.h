@@ -16,6 +16,13 @@ void testAddCMulCNPP();
 void testMulC(int argc, char **argv);
 void testMulCNPP();
 
+
+// color conversion tests
+void testYUV420ToRGB(int argc, char **argv);
+void testYUV420ToRGBNPP();
+
+
+
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer);
 void profile(std::function<void()> compute);
 bool copyAndCheckValue(DeviceBuffer& buffer, int value);
