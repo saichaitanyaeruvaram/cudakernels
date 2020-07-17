@@ -373,3 +373,132 @@ void testRGBToYUV420NPP()
 
 	ck(cudaStreamDestroy(stream));
 }
+
+void testYUV420HueSaturation(int argc, char **argv)
+{
+	std::string method = "";
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	init_test_values();
+
+	DeviceBuffer y, u, v, Y, U, V;
+
+	int width = 1920;
+	int height = 1080;
+
+	getDeviceBuffer(width, height, 0, y);
+	getDeviceBuffer(width, height, 0, u);
+	getDeviceBuffer(width, height, 0, v);
+	getDeviceBuffer(width, height, 0, Y);
+	getDeviceBuffer(width, height, 0, U);
+	getDeviceBuffer(width, height, 0, V);
+
+	auto step_y = y.step();
+	auto step_uv = u.step();
+	NppiSize size = { width, height };
+
+	auto y8u = static_cast<uint8_t *>(y.data());
+	auto u8u = static_cast<uint8_t *>(u.data());
+	auto v8u = static_cast<uint8_t *>(v.data());
+	auto Y8u = static_cast<uint8_t *>(Y.data());
+	auto U8u = static_cast<uint8_t *>(U.data());
+	auto V8u = static_cast<uint8_t *>(V.data());
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	profile([&]() {
+		launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, 0.1, 0.1, step_y, step_uv, size, stream, method);
+
+		ck(cudaStreamSynchronize(stream));
+	});
+
+	ck(cudaStreamDestroy(stream));
+}
+
+void testRGBHueSaturation(int argc, char **argv)
+{
+	std::string method = "";
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	init_test_values();
+
+	DeviceBuffer r, g, b, R, G, B;
+
+	int width = 1920;
+	int height = 1080;
+
+	getDeviceBuffer(width, height, 0, r);
+	getDeviceBuffer(width, height, 0, g);
+	getDeviceBuffer(width, height, 0, b);
+	getDeviceBuffer(width, height, 0, R);
+	getDeviceBuffer(width, height, 0, G);
+	getDeviceBuffer(width, height, 0, B);
+
+	auto step = r.step();
+	NppiSize size = { width, height };
+
+	auto r8u = static_cast<uint8_t *>(r.data());
+	auto g8u = static_cast<uint8_t *>(g.data());
+	auto b8u = static_cast<uint8_t *>(b.data());
+	auto R8u = static_cast<uint8_t *>(R.data());
+	auto G8u = static_cast<uint8_t *>(G.data());
+	auto B8u = static_cast<uint8_t *>(B.data());
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	profile([&]() {
+		launch_rgbhuesaturation(r8u, g8u, b8u, R8u, G8u, B8u, 0.1, 0.1, step, size, stream, method);
+
+		ck(cudaStreamSynchronize(stream));
+	});
+
+	ck(cudaStreamDestroy(stream));
+}
+
+void testRGBToHSVNPP()
+{
+	init_test_values();
+
+	DeviceBuffer hsv, rgb;
+
+	int width = 1920;
+	int row_width = width*3;
+	int height = 1080;
+
+	getDeviceBuffer(row_width, height, 0, hsv);
+	getDeviceBuffer(row_width, height, 0, rgb);
+
+	NppiSize size = { width, height };
+	int step = hsv.step();
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	NppStreamContext nppStreamCtx;
+	nppStreamCtx.hStream = stream;
+
+	auto hsv8u = static_cast<uint8_t *>(hsv.data());
+	auto rgb8u = static_cast<uint8_t *>(rgb.data());
+
+	profile([&]() {
+		check_nppstatus(nppiRGBToHSV_8u_C3R_Ctx(hsv8u,
+			step,
+			rgb8u,
+			step,
+			size,
+			nppStreamCtx
+		));
+
+		ck(cudaStreamSynchronize(stream));
+	});
+
+	ck(cudaStreamDestroy(stream));
+}

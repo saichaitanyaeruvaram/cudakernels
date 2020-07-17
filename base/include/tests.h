@@ -23,6 +23,10 @@ void testYUV420ToRGBNPP();
 void testRGBToYUV420(int argc, char **argv);
 void testRGBToYUV420NPP();
 
+void testRGBToHSVNPP();
+void testRGBHueSaturation(int argc, char **argv);
+void testYUV420HueSaturation(int argc, char **argv);
+
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer);
 void profile(std::function<void()> compute);
 bool copyAndCheckValue(DeviceBuffer& buffer, int value);
