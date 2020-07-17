@@ -46,6 +46,14 @@ int main(int argc, char **argv)
 	{
 		testYUV420ToRGB(argc - 2, argv + 2);
 	}
+	else if (std::string(argv[1]) == "testRGBToYUV420NPP")
+	{
+		testRGBToYUV420NPP();
+	}
+	else if (std::string(argv[1]) == "testRGBToYUV420")
+	{
+		testRGBToYUV420(argc - 2, argv + 2);
+	}
 
 
 

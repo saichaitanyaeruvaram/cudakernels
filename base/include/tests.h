@@ -20,8 +20,8 @@ void testMulCNPP();
 // color conversion tests
 void testYUV420ToRGB(int argc, char **argv);
 void testYUV420ToRGBNPP();
-
-
+void testRGBToYUV420(int argc, char **argv);
+void testRGBToYUV420NPP();
 
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer);
 void profile(std::function<void()> compute);

@@ -97,6 +97,7 @@
 
 
 #define CLAMP_255(x) x < 0 ? 0 : (x > 255 ? 255 : x)
+#define CLAMP_int8(x) x < -128 ? -128 : (x > 127 ? 127 : x)
 
 // https://en.wikipedia.org/wiki/YUV#Y%E2%80%B2UV420p_(and_Y%E2%80%B2V12_or_YV12)_to_RGB888_conversion
 
@@ -111,17 +112,32 @@
 //        B = CLAMP_255(bTmp);                                \
 //	} while (0)
 
-#define YUV_TO_RGB( Y, U, V, R, G, B )                      \
-    do                                                      \
-    {                                                       \
-		float rTmp = Y + __fmul_rd (1.370705, V);                      \
+#define YUV_TO_RGB( Y, U, V, R, G, B )											\
+    do																			\
+    {																			\
+		float rTmp = Y + __fmul_rd (1.370705, V);								\
         float gTmp = Y - __fmul_rd (0.698001, V) - __fmul_rd (0.337633, U);     \
-        float bTmp = Y + __fmul_rd (1.732446, U);						\
-        R = CLAMP_255(rTmp);                                \
-        G = CLAMP_255(gTmp);                                \
-        B = CLAMP_255(bTmp);                                \
+        float bTmp = Y + __fmul_rd (1.732446, U);								\
+        R = CLAMP_255(rTmp);													\
+        G = CLAMP_255(gTmp);													\
+        B = CLAMP_255(bTmp);													\
 	} while (0)
 
+#define RGB_TO_Y( R, G, B, Y )															 \
+    do																					 \
+    {																					 \
+		int yTmp = __fmul_rd(R, 0.299) + __fmul_rd (0.587, G) +  __fmul_rd (0.114, B); \
+        Y = CLAMP_255(yTmp);															 \
+    } while (0)
+
+#define RGB_TO_UV( R, G, B, U, V )														 \
+    do																					 \
+    {																					 \
+		int uTmp = __fmul_rd(B, 0.436) - __fmul_rd (0.289, G) -  __fmul_rd (0.147, R); \
+        int vTmp = __fmul_rd(R, 0.615) - __fmul_rd (0.515, G) -  __fmul_rd (0.1, B);	 \
+        U = 128 + (CLAMP_int8(uTmp));														 \
+        V = 128 + (CLAMP_int8(vTmp));														 \
+	} while (0)
 
 __global__ void yuv420torgb(const uchar4* Y, const uint32_t* U, const uint32_t* V, uchar4* r, uchar4* g, uchar4* b, int width, int height, int step_y, int step_uv)
 {
@@ -137,7 +153,7 @@ __global__ void yuv420torgb(const uchar4* Y, const uint32_t* U, const uint32_t* 
 
 	__shared__ uint32_t u_data[BLOCK_SIZE_4];
 	__shared__ uint32_t v_data[BLOCK_SIZE_4];
-		
+
 	// read for every 4 frames once            
 	if (threadIdx.x % 2 == 0 && threadIdx.y % 2 == 0)
 	{
@@ -155,11 +171,11 @@ __global__ void yuv420torgb(const uchar4* Y, const uint32_t* U, const uint32_t* 
 
 	auto u_data_uint8 = reinterpret_cast<uint8_t*>(u_data);
 	auto v_data_uint8 = reinterpret_cast<uint8_t*>(v_data);
-	   
+
 	auto uvThreadOffset = (threadIdx.y >> 1)*UINT32_BLOCK_STEP_2 + (threadIdx.x << 1);
 	int u_value = u_data_uint8[uvThreadOffset] - 128;
 	int v_value = v_data_uint8[uvThreadOffset] - 128;
-		
+
 	YUV_TO_RGB(Y[offset].x, u_value, v_value, r[offset].x, g[offset].x, b[offset].x);
 	YUV_TO_RGB(Y[offset].y, u_value, v_value, r[offset].y, g[offset].y, b[offset].y);
 
@@ -186,7 +202,7 @@ __global__ void yuv420torgb_plain2(const uint8_t* Y, const uint8_t* U, const uin
 	int u_value = U[uvOffset] - 128;
 	int v_value = V[uvOffset] - 128;
 
-	YUV_TO_RGB(Y[offset], u_value, v_value, r[offset], g[offset], b[offset]);	
+	YUV_TO_RGB(Y[offset], u_value, v_value, r[offset], g[offset], b[offset]);
 }
 
 __global__ void yuv420torgb_plain(const uchar4* Y, const uint8_t* U, const uint8_t* V, uchar4* r, uchar4* g, uchar4* b, int width, int height, int step_y, int step_uv)
@@ -201,7 +217,7 @@ __global__ void yuv420torgb_plain(const uchar4* Y, const uint8_t* U, const uint8
 
 	int offset = y * step_y + x;
 	auto uvOffset = (y >> 1) * (step_uv)+(x << 1);
-	
+
 	int u_value = U[uvOffset] - 128;
 	int v_value = V[uvOffset] - 128;
 
@@ -215,8 +231,34 @@ __global__ void yuv420torgb_plain(const uchar4* Y, const uint8_t* U, const uint8
 	YUV_TO_RGB(Y[offset].w, u_value, v_value, r[offset].w, g[offset].w, b[offset].w);
 }
 
+__global__ void rgbtoyuv420(const uchar4* R, const uchar4* G, const uchar4* B, uchar4* Y, uint8_t* U, uint8_t* V, int width, int height, int step_y, int step_uv)
+{
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if (x >= width || y >= height)
+	{
+		return;
+	}
+
+	int offset = y * step_y + x;
+	RGB_TO_Y(R[offset].x, G[offset].x, B[offset].x, Y[offset].x);
+	RGB_TO_Y(R[offset].y, G[offset].y, B[offset].y, Y[offset].y);
+	RGB_TO_Y(R[offset].z, G[offset].z, B[offset].z, Y[offset].z);
+	RGB_TO_Y(R[offset].w, G[offset].w, B[offset].w, Y[offset].w);
+
+	if (y % 2 == 0)
+	{
+		auto uvOffset = (y >> 1) * (step_uv)+(x << 1);
+		RGB_TO_UV(R[offset].x, G[offset].x, B[offset].x, U[uvOffset], V[uvOffset]);
+		uvOffset += 1;
+		RGB_TO_UV(R[offset].z, G[offset].z, B[offset].z, U[uvOffset], V[uvOffset]);
+	}
+
+}
+
 void launch_yuv420torgb(const Npp8u* Y, const Npp8u* U, const Npp8u* V, Npp8u* R, Npp8u* G, Npp8u* B, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method)
-{	
+{
 	if (method == "plain")
 	{
 		auto width = size.width >> 2;
@@ -242,4 +284,15 @@ void launch_yuv420torgb(const Npp8u* Y, const Npp8u* U, const Npp8u* V, Npp8u* R
 		dim3 grid((width + block.x - 1) / block.x, (size.height + block.y - 1) / block.y);
 		yuv420torgb << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(Y), reinterpret_cast<const uint32_t*>(U), reinterpret_cast<const uint32_t*>(V), reinterpret_cast<uchar4*>(R), reinterpret_cast<uchar4*>(G), reinterpret_cast<uchar4*>(B), width, size.height, step_y, step_uv);
 	}
+}
+
+void launch_rgbtoyuv420(const Npp8u* R, const Npp8u* G, const Npp8u* B, Npp8u* Y, Npp8u* U, Npp8u* V, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method)
+{
+	auto width = size.width >> 2;
+	step_y = step_y >> 2;
+	step_uv = step_uv;
+	dim3 block(32, 32);
+	dim3 grid((width + block.x - 1) / block.x, (size.height + block.y - 1) / block.y);
+	rgbtoyuv420 << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(R), reinterpret_cast<const uchar4*>(G), reinterpret_cast<const uchar4*>(B), reinterpret_cast<uchar4*>(Y), reinterpret_cast<uint8_t*>(U), reinterpret_cast<uint8_t*>(V),  width, size.height, step_y, step_uv);
+
 }
