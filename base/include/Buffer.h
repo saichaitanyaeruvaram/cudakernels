@@ -152,4 +152,29 @@ public:
 		ck(cudaMemcpy2D(m_data, m_step, buffer.data(), buffer.step(), buffer.width(), buffer.height(), cudaMemcpyDeviceToHost));
 		ck(cudaDeviceSynchronize());
 	}
+
+	void copyTo(DeviceBuffer& buffer)
+	{
+		ck(cudaMemcpy2D(buffer.data(), buffer.step(), m_data, m_step, buffer.width(), buffer.height(), cudaMemcpyHostToDevice));
+		ck(cudaDeviceSynchronize());
+	}
+
+	void setAllValues()
+	{
+		auto data = static_cast<uint8_t*>(m_data);
+
+		int value = 0;
+		for (auto i = 0; i < m_height; i++)
+		{
+			auto offset = m_width * i;
+			for (auto j = 0; j < m_width; j++)
+			{
+				data[offset + j] = value++;
+				if(value > 255)
+				{
+					value = 0;
+				}
+			}
+		}
+	}
 };

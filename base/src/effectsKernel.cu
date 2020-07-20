@@ -244,7 +244,7 @@ do 																	\
 	Npp32f H, S, V; 												\
 	RGB_TO_HSV(r, g, b, H, S, V); 									\
 	H = CLAMP_1(H + hue); 											\
-	S = CLAMP_1(S + saturation); 									\
+	S = CLAMP_1(__fmul_rd(S, saturation)); 							\
 	HSV_TO_RGB(H, S, V, R, G, B);									\
 } while(0)
 

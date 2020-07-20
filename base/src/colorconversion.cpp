@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "kernels.h"
 #include <vector>
+#include <algorithm>
 
 
 std::vector<std::vector<uint8_t>> yuvvalues;
@@ -9,6 +10,7 @@ std::vector<std::vector<uint8_t>> yuvvalues_npp;
 std::vector<std::vector<uint8_t>> rgbvalues;
 std::vector<std::vector<uint8_t>> yuvvalues_custom;
 
+#define CLAMP_1(x) x < 0 ? 0 : (x > 1 ? 1 : x)
 #define CLAMP_255(x) x < 0 ? 0 : (x > 255 ? 255 : x)
 #define CLAMP_int8(x) x < -128 ? -128 : (x > 127 ? 127 : x)
 
@@ -502,3 +504,241 @@ void testRGBToHSVNPP()
 
 	ck(cudaStreamDestroy(stream));
 }
+
+#define RGB_TO_HSV(R, G, B, H, S, V) 									\
+do  																	\
+{ 																		\
+	Npp32f nNormalizedR = R*0.003921569F; /* 255.0F*/ 					\
+	Npp32f nNormalizedG = G*0.003921569F; 								\
+	Npp32f nNormalizedB = B*0.003921569F; 								\
+	Npp32f nS; 															\
+	Npp32f nH; 															\
+	/* Value*/ 															\
+	Npp32f nV = std::max(nNormalizedR, nNormalizedG); 					\
+	nV = std::max(nV, nNormalizedB); 									\
+	/*Saturation*/ 														\
+	Npp32f nTemp = std::min(nNormalizedR, nNormalizedG); 				\
+	nTemp = std::min(nTemp, nNormalizedB); 								\
+	Npp32f nDivisor = nV - nTemp; 										\
+	if (nV == 0.0F) /*achromatics case*/ 								\
+	{ 																	\
+		nS = 0.0F; 														\
+		nH = 0.0F; 														\
+	} 																	\
+	else /*chromatics case*/ 											\
+	{ 																	\
+		nS = nDivisor/nV; 												\
+	} 																	\
+	/* Hue:*/ 															\
+	Npp32f nCr = (nV - nNormalizedR)/ nDivisor; 						\
+	Npp32f nCg = (nV - nNormalizedG)/ nDivisor; 						\
+	Npp32f nCb = (nV - nNormalizedB)/ nDivisor; 						\
+	if (nNormalizedR == nV) 											\
+		nH = nCb - nCg; 												\
+	else if (nNormalizedG == nV) 										\
+		nH = 2.0F + nCr - nCb; 											\
+	else if (nNormalizedB == nV) 										\
+		nH = 4.0F + nCg - nCr; 											\
+	nH = nH*0.166667F; /* 6.0F*/        					\
+	if (nH < 0.0F) 														\
+		nH = nH + 1.0F; 												\
+	H = CLAMP_1(nH); 													\
+	S = CLAMP_1(nS); 													\
+	V = CLAMP_1(nV); 													\
+	 																	\
+} while(0)
+
+#define HSV_TO_RGB(nNormalizedH, nNormalizedS, nNormalizedV, R, G, B) 						\
+do 																							\
+{ 																							\
+	Npp32f nR; 																				\
+	Npp32f nG; 																				\
+	Npp32f nB; 																				\
+	if (nNormalizedS == 0.0F) 																\
+	{ 																						\
+		nR = nG = nB = nNormalizedV; 														\
+	} 																						\
+	else 																					\
+	{ 																						\
+		if (nNormalizedH == 1.0F) 															\
+			nNormalizedH = 0.0F; 															\
+		else 																				\
+		{																					\
+			/* 0.1667F*/																	\
+			nNormalizedH = nNormalizedH*6.0F;  												\
+		}																					\
+	} 																						\
+	Npp32f nI = std::floor(nNormalizedH); 													\
+	Npp32f nF = nNormalizedH - nI; 															\
+	Npp32f nM = nNormalizedV*(1.0F - nNormalizedS); 										\
+	Npp32f nN = nNormalizedV*(1.0F - nNormalizedS*nF); 										\
+	Npp32f nK = nNormalizedV*(1.0F - (nNormalizedS*(1.0F - nF)));		 					\
+	if (nI == 0.0F) 																		\
+	{ 																						\
+		nR = nNormalizedV; nG = nK; nB = nM; 												\
+	} 																						\
+	else if (nI == 1.0F) 																	\
+	{ 																						\
+		nR = nN; nG = nNormalizedV; nB = nM; 												\
+	} 																						\
+	else if (nI == 2.0F) 																	\
+	{ 																						\
+		nR = nM; nG = nNormalizedV; nB = nK; 												\
+	} 																						\
+	else if (nI == 3.0F) 																	\
+	{ 																						\
+		nR = nM; nG = nN; nB = nNormalizedV; 												\
+	} 																						\
+	else if (nI == 4.0F) 																	\
+	{ 																						\
+		nR = nK; nG = nM; nB = nNormalizedV; 												\
+	} 																						\
+	else if (nI == 5.0F) 																	\
+	{ 																						\
+		nR = nNormalizedV; nG = nM; nB = nN; 												\
+	} 																						\
+	R = CLAMP_255(nR*255.0F); 																\
+	G = CLAMP_255(nG*255.0F); 																\
+	B = CLAMP_255(nB*255.0F); 																\
+																							\
+} while(0)
+
+#define RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation)   \
+do 																	\
+{ 																	\
+	Npp32f H, S, V; 												\
+	RGB_TO_HSV(r, g, b, H, S, V); 									\
+	H = CLAMP_1(H + hue); 											\
+	S = CLAMP_1(S * saturation); 									\
+	HSV_TO_RGB(H, S, V, R, G, B);									\
+} while(0)
+
+#define YUVHUESATURATIONADJUST(y, u, v, Y, U, V, hue, saturation) 	\
+do 																	\
+{ 																	\
+	Npp8u r, g, b; 													\
+	YUV_TO_RGB(y, u, v, r, g, b); 									\
+	Npp8u R, G, B; 													\
+	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 		\
+	RGB_TO_YUV(R, G, B, Y, U, V);									\
+} while (0)
+
+
+void testYUV420HueSaturation_randomvalues(int argc, char **argv)
+{
+	std::string method = "";
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	DeviceBuffer y, u, v, Y, U, V;
+
+	int width = 1920;
+	int height = 1080;
+
+	int width_2 = width >> 1;
+	int height_2 = height >> 1;
+
+	y.init(width, height);
+	u.init(width_2, height_2);
+	v.init(width_2, height_2);
+	Y.init(width, height);
+	U.init(width_2, height_2);
+	V.init(width_2, height_2);
+
+	auto step_y = y.step();
+	auto step_uv = u.step();
+	NppiSize size = { width, height };
+
+	auto y8u = static_cast<uint8_t *>(y.data());
+	auto u8u = static_cast<uint8_t *>(u.data());
+	auto v8u = static_cast<uint8_t *>(v.data());
+	auto Y8u = static_cast<uint8_t *>(Y.data());
+	auto U8u = static_cast<uint8_t *>(U.data());
+	auto V8u = static_cast<uint8_t *>(V.data());
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+
+	HostBuffer h_y, h_u, h_v, h_Y, h_U, h_V;
+	h_y.init(width, height);
+	h_u.init(width_2, height_2);
+	h_v.init(width_2, height_2);
+	h_Y.init(width, height);
+	h_U.init(width_2, height_2);
+	h_V.init(width_2, height_2);
+	h_y.setAllValues();
+	h_u.setAllValues();
+	h_v.setAllValues();
+	h_y.copyTo(y);
+	h_u.copyTo(u);
+	h_v.copyTo(v);
+	
+	
+	float hue = 0;
+	float saturation = 1;
+	
+	Y.memset(0);
+	U.memset(0);
+	V.memset(0);
+
+
+	launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, hue, saturation, step_y, step_uv, size, stream, method);	
+	ck(cudaStreamSynchronize(stream));
+
+	h_Y.copy(Y);
+	h_U.copy(U);
+	h_V.copy(V);
+
+	auto h_y8u = static_cast<uint8_t *>(h_y.data());
+	auto h_u8u = static_cast<uint8_t *>(h_u.data());
+	auto h_v8u = static_cast<uint8_t *>(h_v.data());
+	auto h_Y8u = static_cast<uint8_t *>(h_Y.data());
+	auto h_U8u = static_cast<uint8_t *>(h_U.data());
+	auto h_V8u = static_cast<uint8_t *>(h_V.data());
+
+	bool equal = true;
+	for(auto j = 0; j < height && equal; j++ )
+	{
+		auto offset = width * j;
+		int offset_uv = width_2 *(j >> 1);
+		for(auto i = 0; i < width; i++)
+		{
+			auto curOffset = offset + i;
+			auto curOffset_uv = offset_uv + (i >> 1);			
+			Npp32u expectedValue_y = 0;
+			Npp32u expectedValue_u = 0;
+			Npp32u expectedValue_v = 0;
+			YUVHUESATURATIONADJUST(h_y8u[curOffset], h_u8u[curOffset_uv], h_v8u[curOffset_uv], expectedValue_y, expectedValue_u, expectedValue_v, hue, saturation);
+			
+			auto actualValue_y = static_cast<Npp32u>(h_Y8u[curOffset]);
+			auto actualValue_u = static_cast<Npp32u>(h_U8u[curOffset_uv]);
+			auto actualValue_v = static_cast<Npp32u>(h_V8u[curOffset_uv]);
+			std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_y8u[curOffset]) << "<>" << static_cast<Npp32u>(h_u8u[curOffset_uv]) << "<>" << static_cast<Npp32u>(h_v8u[curOffset_uv]) << "<output>" << actualValue_y << "<>" << actualValue_u << "<>" << actualValue_v << std::endl;
+			if (actualValue_y != expectedValue_y)
+			{
+				std::cout << j << "<>" << i << "<ouput_y------------------------------------------------------------------------------------------->" << expectedValue_y << "<>" << actualValue_y << std::endl;
+				equal = false;
+			}
+			if (actualValue_u != expectedValue_u)
+			{
+				std::cout << j << "<>" << i << "<output_u------------------------------------------------------------------------------------------->" << expectedValue_u << "<>" << actualValue_u << std::endl;
+				equal = false;
+			}
+			if (actualValue_v != expectedValue_v)
+			{
+				std::cout << j << "<>" << i << "<output_v------------------------------------------------------------------------------------------->" << expectedValue_v << "<>" << actualValue_v << std::endl;
+				equal = false;
+			}
+		}
+		if (!equal)
+		{
+			throw "failed";
+		}
+	}
+
+	ck(cudaStreamDestroy(stream));
+}
+

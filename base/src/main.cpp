@@ -66,6 +66,10 @@ int main(int argc, char **argv)
 	{
 		testRGBToHSVNPP();
 	}
+	if (std::string(argv[1]) == "all" || std::string(argv[1]) == "testYUV420HueSaturation_randomvalues")
+	{
+		testYUV420HueSaturation_randomvalues(argc - 2, argv + 2);
+	}
 
 
     return 0;
