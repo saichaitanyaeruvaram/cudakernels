@@ -411,7 +411,7 @@ void testYUV420HueSaturation(int argc, char **argv)
 	ck(cudaStreamCreate(&stream));
 
 	profile([&]() {
-		launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, 0.1, 0.1, step_y, step_uv, size, stream, method);
+		launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, 20, 5, 0.1, 0.1, step_y, step_uv, size, stream, method);
 
 		ck(cudaStreamSynchronize(stream));
 	});
@@ -611,14 +611,20 @@ do 																	\
 	HSV_TO_RGB(H, S, V, R, G, B);									\
 } while(0)
 
-#define YUVHUESATURATIONADJUST(y, u, v, Y, U, V, hue, saturation) 	\
-do 																	\
-{ 																	\
-	Npp8u r, g, b; 													\
-	YUV_TO_RGB(y, u, v, r, g, b); 									\
-	Npp8u R, G, B; 													\
-	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 		\
-	RGB_TO_YUV(R, G, B, Y, U, V);									\
+#define YUVHUESATURATIONADJUST(y, u, v, Y, U, V, brightness, contrast, hue, saturation) 	\
+do 																							\
+{ 																							\
+	Npp32f r, g, b; 																		\
+	YUV_TO_RGB(y, u, v, r, g, b); 															\
+	r = r*contrast + brightness; 															\
+	r = CLAMP_255(r);																		\
+	g = g * contrast + brightness;															\
+	g = CLAMP_255(g);																		\
+	b = b * contrast + brightness;															\
+	b = CLAMP_255(b);																		\
+	Npp8u R, G, B; 																			\
+	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 								\
+	RGB_TO_YUV(R, G, B, Y, U, V);															\
 } while (0)
 
 
@@ -977,13 +983,15 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 
 	float hue = 0.2;
 	float saturation = 2;
+	float brightness = 20;
+	float contrast = 0.2;
 
 	Y.memset(0);
 	U.memset(0);
 	V.memset(0);
 
 
-	launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, hue, saturation, step_y, step_uv, size, stream, method);
+	launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, brightness, contrast, hue, saturation, step_y, step_uv, size, stream, method);
 	ck(cudaStreamSynchronize(stream));
 
 	h_Y.copy(Y);
@@ -1009,7 +1017,7 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 			Npp32u expectedValue_y = 0;
 			Npp32u expectedValue_u = 0;
 			Npp32u expectedValue_v = 0;
-			YUVHUESATURATIONADJUST(h_y8u[curOffset], h_u8u[curOffset_uv], h_v8u[curOffset_uv], expectedValue_y, expectedValue_u, expectedValue_v, hue, saturation);
+			YUVHUESATURATIONADJUST(h_y8u[curOffset], h_u8u[curOffset_uv], h_v8u[curOffset_uv], expectedValue_y, expectedValue_u, expectedValue_v, brightness, contrast, hue, saturation);
 
 			auto actualValue_y = static_cast<Npp32u>(h_Y8u[curOffset]);
 			auto actualValue_u = -1;

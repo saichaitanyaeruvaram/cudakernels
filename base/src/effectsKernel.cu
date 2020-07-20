@@ -248,25 +248,43 @@ do 																	\
 	HSV_TO_RGB(H, S, V, R, G, B);									\
 } while(0)
 
-#define YUVHUESATURATIONADJUST_Y(y, u, v, Y, hue, saturation) 		\
-do 																	\
-{ 																	\
-	Npp8u r, g, b; 													\
-	YUV_TO_RGB(y, u, v, r, g, b); 									\
-	Npp8u R, G, B; 													\
-	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 		\
-	RGB_TO_Y(R, G, B, Y); 											\
+#define BRIGHNESS_CONTRAST(input, output, brightness, contrast)		\
+do																	\
+{																	\
+	output = __fadd_rn(__fmul_rn(input, contrast), brightness);		\
+	output = CLAMP_255(output);										\
+} while(0)															\
+
+#define BRIGHNESS_CONTRAST_RGB(r, g, b, brightness, contrast)		\
+do																	\
+{																	\
+	BRIGHNESS_CONTRAST(r, r, brightness, contrast);					\
+	BRIGHNESS_CONTRAST(g, g, brightness, contrast);					\
+	BRIGHNESS_CONTRAST(b, b, brightness, contrast);					\
 } while(0)
 
-#define YUVHUESATURATIONADJUST(y, u, v, Y, U, V, hue, saturation) 	\
-do 																	\
-{ 																	\
-	Npp8u r, g, b; 													\
-	YUV_TO_RGB(y, u, v, r, g, b); 									\
-	Npp8u R, G, B; 													\
-	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 		\
-	RGB_TO_Y(R, G, B, Y); 											\
-	RGB_TO_UV(R, G, B, U, V); 										\
+
+#define YUVHUESATURATIONADJUST_Y(y, u, v, Y, brightness, contrast, hue, saturation) 	\
+do 																						\
+{ 																						\
+	Npp32f r, g, b; 																	\
+	YUV_TO_RGB(y, u, v, r, g, b); 														\
+	BRIGHNESS_CONTRAST_RGB(r, g, b, brightness, contrast);								\
+	Npp8u R, G, B; 																		\
+	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 							\
+	RGB_TO_Y(R, G, B, Y); 																\
+} while(0)
+
+#define YUVHUESATURATIONADJUST(y, u, v, Y, U, V, brightness, contrast, hue, saturation)	\
+do 																						\
+{ 																						\
+	Npp32f r, g, b; 																	\
+	YUV_TO_RGB(y, u, v, r, g, b); 														\
+	BRIGHNESS_CONTRAST_RGB(r, g, b, brightness, contrast);								\
+	Npp8u R, G, B; 																		\
+	RGBHUESATURATIONADJUST(r, g, b, R, G, B, hue, saturation); 							\
+	RGB_TO_Y(R, G, B, Y); 																\
+	RGB_TO_UV(R, G, B, U, V); 															\
 } while (0)
 
 __global__ void yuv420torgb(const uchar4* Y, const uint32_t* U, const uint32_t* V, uchar4* r, uchar4* g, uchar4* b, int width, int height, int step_y, int step_uv)
@@ -404,7 +422,7 @@ __global__ void rgbhuesaturation(const uchar4* r, const uchar4* g, const uchar4*
 	RGBHUESATURATIONADJUST(r[offset].w, g[offset].w, b[offset].w, R[offset].w, G[offset].w, B[offset].w, hue, saturation);
 }
 
-__global__ void yuv420huesaturation(const uchar4* Yold, const uint8_t* Uold, const uint8_t* Vold, uchar4* Y, uint8_t* U, uint8_t* V, Npp32f hue, Npp32f saturation, int width, int height, int step_y, int step_uv)
+__global__ void yuv420huesaturation(const uchar4* Yold, const uint8_t* Uold, const uint8_t* Vold, uchar4* Y, uint8_t* U, uint8_t* V, Npp32f brightness, Npp32f contrast, Npp32f hue, Npp32f saturation, int width, int height, int step_y, int step_uv)
 {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -422,26 +440,26 @@ __global__ void yuv420huesaturation(const uchar4* Yold, const uint8_t* Uold, con
 
 	if (y % 2 == 0)
 	{
-		YUVHUESATURATIONADJUST(Yold[offset].x, u_value, v_value, Y[offset].x, U[uvOffset], V[uvOffset], hue, saturation);		
+		YUVHUESATURATIONADJUST(Yold[offset].x, u_value, v_value, Y[offset].x, U[uvOffset], V[uvOffset], brightness, contrast, hue, saturation);
 	}
 	else
 	{
-		YUVHUESATURATIONADJUST_Y(Yold[offset].x, u_value, v_value, Y[offset].x, hue, saturation);
+		YUVHUESATURATIONADJUST_Y(Yold[offset].x, u_value, v_value, Y[offset].x, brightness, contrast, hue, saturation);
 	}
-	YUVHUESATURATIONADJUST_Y(Yold[offset].y, u_value, v_value, Y[offset].y, hue, saturation);
+	YUVHUESATURATIONADJUST_Y(Yold[offset].y, u_value, v_value, Y[offset].y, brightness, contrast, hue, saturation);
 
 	uvOffset += 1;
 	u_value = Uold[uvOffset] - 128;
 	v_value = Vold[uvOffset] - 128;
 	if (y % 2 == 0)
-	{		
-		YUVHUESATURATIONADJUST(Yold[offset].z, u_value, v_value, Y[offset].z, U[uvOffset], V[uvOffset], hue, saturation);
+	{
+		YUVHUESATURATIONADJUST(Yold[offset].z, u_value, v_value, Y[offset].z, U[uvOffset], V[uvOffset], brightness, contrast, hue, saturation);
 	}
 	else
 	{
-		YUVHUESATURATIONADJUST_Y(Yold[offset].z, u_value, v_value, Y[offset].z, hue, saturation);
+		YUVHUESATURATIONADJUST_Y(Yold[offset].z, u_value, v_value, Y[offset].z, brightness, contrast, hue, saturation);
 	}
-	YUVHUESATURATIONADJUST_Y(Yold[offset].w, u_value, v_value, Y[offset].w, hue, saturation);
+	YUVHUESATURATIONADJUST_Y(Yold[offset].w, u_value, v_value, Y[offset].w, brightness, contrast, hue, saturation);
 }
 
 void launch_yuv420torgb(const Npp8u* Y, const Npp8u* U, const Npp8u* V, Npp8u* R, Npp8u* G, Npp8u* B, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method)
@@ -500,11 +518,11 @@ void launch_rgbhuesaturation(const Npp8u* r, const Npp8u* g, const Npp8u* b, Npp
 	rgbhuesaturation << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(r), reinterpret_cast<const uchar4*>(g), reinterpret_cast<const uchar4*>(b), reinterpret_cast<uchar4*>(R), reinterpret_cast<uchar4*>(G), reinterpret_cast<uchar4*>(B), hue, saturation, width, size.height, step);
 }
 
-void launch_yuv420huesaturation(const Npp8u* y, const Npp8u* u, const Npp8u* v, Npp8u* Y, Npp8u* U, Npp8u* V, Npp32f hue, Npp32f saturation, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method)
+void launch_yuv420huesaturation(const Npp8u* y, const Npp8u* u, const Npp8u* v, Npp8u* Y, Npp8u* U, Npp8u* V, Npp32f brightness, Npp32f contrast, Npp32f hue, Npp32f saturation, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method)
 {
 	auto width = size.width >> 2;
 	step_y = step_y >> 2;
 	dim3 block(32, 32);
 	dim3 grid((width + block.x - 1) / block.x, (size.height + block.y - 1) / block.y);
-	yuv420huesaturation << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(y), reinterpret_cast<const uint8_t*>(u), reinterpret_cast<const uint8_t*>(v), reinterpret_cast<uchar4*>(Y), reinterpret_cast<uint8_t*>(U), reinterpret_cast<uint8_t*>(V), hue, saturation, width, size.height, step_y, step_uv);
+	yuv420huesaturation << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(y), reinterpret_cast<const uint8_t*>(u), reinterpret_cast<const uint8_t*>(v), reinterpret_cast<uchar4*>(Y), reinterpret_cast<uint8_t*>(U), reinterpret_cast<uint8_t*>(V), brightness, contrast, hue, saturation, width, size.height, step_y, step_uv);
 }

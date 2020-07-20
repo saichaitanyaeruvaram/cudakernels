@@ -16,4 +16,4 @@ void launchBrightnessContrast_uv_int8(const Npp8u* src, const Npp32s addValue, c
 void launch_yuv420torgb(const Npp8u* Y, const Npp8u* U, const Npp8u* V, Npp8u* R, Npp8u* G, Npp8u* B, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method);
 void launch_rgbtoyuv420(const Npp8u* R, const Npp8u* G, const Npp8u* B, Npp8u* Y, Npp8u* U, Npp8u* V, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method);
 void launch_rgbhuesaturation(const Npp8u* r, const Npp8u* g, const Npp8u* b, Npp8u* R, Npp8u* G, Npp8u* B, Npp32f hue, Npp32f saturation, int step, NppiSize size, cudaStream_t stream, std::string method);
-void launch_yuv420huesaturation(const Npp8u* y, const Npp8u* u, const Npp8u* v, Npp8u* Y, Npp8u* U, Npp8u* V, Npp32f hue, Npp32f saturation, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method);
+void launch_yuv420huesaturation(const Npp8u* y, const Npp8u* u, const Npp8u* v, Npp8u* Y, Npp8u* U, Npp8u* V, Npp32f brighness, Npp32f contrast, Npp32f hue, Npp32f saturation, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method);
