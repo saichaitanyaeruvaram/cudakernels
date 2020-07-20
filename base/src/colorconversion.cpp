@@ -624,8 +624,197 @@ do 																	\
 } while (0)
 
 
+#define COMPARE_AND_PRINT(expected_value, actual_value, tolerance, result, messagePrefix)															\
+do {																																				\
+	result = true;																																	\
+	int diff = abs(int(expected_value - actual_value));																								\
+	if (diff > tolerance)																															\
+	{																																				\
+		result = false;																																\
+		std::cout << messagePrefix << "<expected_value>" << expected_value << "<actual_value>" << actual_value << "<diff>" << diff << std::endl;	\
+	}																																				\
+} while(0)
+
+
+
+void testYUV42ToRGB_randomvalues(int argc, char **argv)
+{
+	std::string method = "";
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	DeviceBuffer y, u, v, R, G, B;
+
+	int width = 1920;
+	int height = 1080;
+
+	int width_2 = width >> 1;
+	int height_2 = height >> 1;
+
+	y.init(width, height);
+	u.init(width_2, height_2);
+	v.init(width_2, height_2);
+	R.init(width, height);
+	G.init(width, height);
+	B.init(width, height);
+
+	auto step_y = y.step();
+	auto step_uv = u.step();
+	NppiSize size = { width, height };
+
+	auto y8u = static_cast<uint8_t *>(y.data());
+	auto u8u = static_cast<uint8_t *>(u.data());
+	auto v8u = static_cast<uint8_t *>(v.data());
+	auto R8u = static_cast<uint8_t *>(R.data());
+	auto G8u = static_cast<uint8_t *>(G.data());
+	auto B8u = static_cast<uint8_t *>(B.data());
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+
+	HostBuffer h_y, h_u, h_v, h_R, h_G, h_B;
+	h_y.init(width, height);
+	h_u.init(width_2, height_2);
+	h_v.init(width_2, height_2);
+	h_R.init(width, height);
+	h_G.init(width, height);
+	h_B.init(width, height);
+	h_y.setAllValues();
+	h_u.setAllValues();
+	h_v.setAllValues();
+	h_y.copyTo(y);
+	h_u.copyTo(u);
+	h_v.copyTo(v);
+
+
+	float hue = 0;
+	float saturation = 1;
+
+	R.memset(0);
+	G.memset(0);
+	B.memset(0);
+
+
+	launch_yuv420torgb(y8u, u8u, v8u, R8u, G8u, B8u, step_y, step_uv, size, stream, "plain");
+	ck(cudaStreamSynchronize(stream));
+
+	h_R.copy(R);
+	h_G.copy(G);
+	h_B.copy(B);
+
+	auto h_y8u = static_cast<uint8_t *>(h_y.data());
+	auto h_u8u = static_cast<uint8_t *>(h_u.data());
+	auto h_v8u = static_cast<uint8_t *>(h_v.data());
+	auto h_R8u = static_cast<uint8_t *>(h_R.data());
+	auto h_G8u = static_cast<uint8_t *>(h_G.data());
+	auto h_B8u = static_cast<uint8_t *>(h_B.data());
+
+	bool equal = true;
+	for (auto j = 0; j < height && equal; j++)
+	{
+		auto offset = width * j;
+		int offset_uv = width_2 * (j >> 1);
+		for (auto i = 0; i < width && equal; i++)
+		{
+			auto curOffset = offset + i;
+			auto curOffset_uv = offset_uv + (i >> 1);
+			Npp32u expectedValue_R = 0;
+			Npp32u expectedValue_G = 0;
+			Npp32u expectedValue_B = 0;
+			YUV_TO_RGB(h_y8u[curOffset], h_u8u[curOffset_uv], h_v8u[curOffset_uv], expectedValue_R, expectedValue_G, expectedValue_B);
+
+			auto actualValue_R = static_cast<Npp32u>(h_R8u[curOffset]);
+			auto actualValue_G = static_cast<Npp32u>(h_G8u[curOffset]);
+			auto actualValue_B = static_cast<Npp32u>(h_B8u[curOffset]);
+			//std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_y8u[curOffset]) << "<>" << static_cast<Npp32u>(h_u8u[curOffset_uv]) << "<>" << static_cast<Npp32u>(h_v8u[curOffset_uv]) << "<output>" << actualValue_R << "<>" << actualValue_G << "<>" << actualValue_B << std::endl;
+			if (actualValue_R != expectedValue_R)
+			{
+				std::cout << j << "<>" << i << "<ouput_r------------------------------------------------------------------------------------------->" << expectedValue_R << "<>" << actualValue_R << std::endl;
+				equal = false;
+			}
+			if (actualValue_G != expectedValue_G)
+			{
+				std::cout << j << "<>" << i << "<output_g------------------------------------------------------------------------------------------->" << expectedValue_G << "<>" << actualValue_G << std::endl;
+				equal = false;
+			}
+			if (actualValue_B != expectedValue_B)
+			{
+				std::cout << j << "<>" << i << "<output_b------------------------------------------------------------------------------------------->" << expectedValue_B << "<>" << actualValue_B << std::endl;
+				equal = false;
+			}
+		}
+		if (!equal)
+		{
+			throw "failed";
+		}
+	}
+
+
+	y.memset(0);
+	u.memset(0);
+	v.memset(0);
+	h_R.setAllValues();
+	h_G.setAllValues();
+	h_B.setAllValues();
+	h_R.copyTo(R);
+	h_G.copyTo(G);
+	h_B.copyTo(B);
+
+	launch_rgbtoyuv420(R8u, G8u, B8u, y8u, u8u, v8u, step_y, step_uv, size, stream, "plain");
+	ck(cudaStreamSynchronize(stream));
+
+	h_y.copy(y);
+	h_u.copy(u);
+	h_v.copy(v);
+
+	for (auto j = 0; j < height && equal; j++)
+	{
+		auto offset = width * j;
+		int offset_uv = width_2 * (j >> 1);
+		for (auto i = 0; i < width && equal; i++)
+		{
+			auto curOffset = offset + i;
+			auto curOffset_uv = offset_uv + (i >> 1);
+			Npp32u expectedValue_y = 0;
+			Npp32u expectedValue_u = 0;
+			Npp32u expectedValue_v = 0;
+			RGB_TO_YUV(h_R8u[curOffset], h_G8u[curOffset], h_B8u[curOffset], expectedValue_y, expectedValue_u, expectedValue_v);
+
+			auto actualValue_y = static_cast<Npp32u>(h_y8u[curOffset]);
+			auto actualValue_u = -1;
+			auto actualValue_v = -1;			
+			COMPARE_AND_PRINT(expectedValue_y, actualValue_y, 1, equal, std::to_string(j) + "<>" + std::to_string(i) + "<y>");
+			
+			if (i % 2 == 0 && j % 2 == 0)
+			{
+				actualValue_u = static_cast<Npp32u>(h_u8u[curOffset_uv]);
+				actualValue_v = static_cast<Npp32u>(h_v8u[curOffset_uv]);
+				COMPARE_AND_PRINT(expectedValue_u, actualValue_u, 1, equal, std::to_string(j) + "<>" + std::to_string(i) + "<u>");
+				COMPARE_AND_PRINT(expectedValue_v, actualValue_v, 1, equal, std::to_string(j) + "<>" + std::to_string(i) + "<v>");
+			}
+			if (!equal)
+			{
+				std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_R8u[curOffset]) << "<>" << static_cast<Npp32u>(h_G8u[curOffset]) << "<>" << static_cast<Npp32u>(h_B8u[curOffset]) << "<output>" << actualValue_y << "<>" << actualValue_u << "<>" << actualValue_v << std::endl;
+			}
+		}
+		if (!equal)
+		{
+			throw "failed";
+		}
+	}
+
+	ck(cudaStreamDestroy(stream));
+}
+
+
 void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 {
+	testYUV42ToRGB_randomvalues(argc, argv);
+	return;
+
 	std::string method = "";
 	if (argc == 1)
 	{

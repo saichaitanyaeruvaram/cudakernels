@@ -116,9 +116,9 @@
 #define YUV_TO_RGB( Y, U, V, R, G, B )											\
     do																			\
     {																			\
-		float rTmp = Y + __fmul_rd (1.370705, V);								\
-        float gTmp = Y - __fmul_rd (0.698001, V) - __fmul_rd (0.337633, U);     \
-        float bTmp = Y + __fmul_rd (1.732446, U);								\
+		float rTmp = Y + __fmul_rn (1.370705, V);								\
+        float gTmp = Y - __fmul_rn (0.698001, V) - __fmul_rn (0.337633, U);     \
+        float bTmp = Y + __fmul_rn (1.732446, U);								\
         R = CLAMP_255(rTmp);													\
         G = CLAMP_255(gTmp);													\
         B = CLAMP_255(bTmp);													\
@@ -127,15 +127,15 @@
 #define RGB_TO_Y( R, G, B, Y )															 \
     do																					 \
     {																					 \
-		int yTmp = __fmul_rd(R, 0.299) + __fmul_rd (0.587, G) +  __fmul_rd (0.114, B); \
+		int yTmp = __fmul_rn(R, 0.299) + __fmul_rn (0.587, G) +  __fmul_rn (0.114, B); \
         Y = CLAMP_255(yTmp);															 \
     } while (0)
 
 #define RGB_TO_UV( R, G, B, U, V )														 \
     do																					 \
     {																					 \
-		int uTmp = __fmul_rd(B, 0.436) - __fmul_rd (0.289, G) -  __fmul_rd (0.147, R); \
-        int vTmp = __fmul_rd(R, 0.615) - __fmul_rd (0.515, G) -  __fmul_rd (0.1, B);	 \
+		int uTmp = __fmul_rn(B, 0.436) - __fmul_rn (0.289, G) -  __fmul_rn (0.147, R); \
+        int vTmp = __fmul_rn(R, 0.615) - __fmul_rn (0.515, G) -  __fmul_rn (0.1, B);	 \
         U = 128 + (CLAMP_int8(uTmp));														 \
         V = 128 + (CLAMP_int8(vTmp));														 \
 	} while (0)
@@ -143,9 +143,9 @@
 #define RGB_TO_HSV(R, G, B, H, S, V) 									\
 do  																	\
 { 																		\
-	Npp32f nNormalizedR = __fmul_rd(R, 0.003921569F); /* 255.0F*/ 		\
-	Npp32f nNormalizedG = __fmul_rd(G, 0.003921569F); 					\
-	Npp32f nNormalizedB = __fmul_rd(B, 0.003921569F); 					\
+	Npp32f nNormalizedR = __fmul_rn(R, 0.003921569F); /* 255.0F*/ 		\
+	Npp32f nNormalizedG = __fmul_rn(G, 0.003921569F); 					\
+	Npp32f nNormalizedB = __fmul_rn(B, 0.003921569F); 					\
 	Npp32f nS; 															\
 	Npp32f nH; 															\
 	/* Value*/ 															\
@@ -162,19 +162,19 @@ do  																	\
 	} 																	\
 	else /*chromatics case*/ 											\
 	{ 																	\
-		nS = __fdiv_rd(nDivisor, nV); 									\
+		nS = __fdiv_rn(nDivisor, nV); 									\
 	} 																	\
 	/* Hue:*/ 															\
-	Npp32f nCr = __fdiv_rd((nV - nNormalizedR), nDivisor); 				\
-	Npp32f nCg = __fdiv_rd((nV - nNormalizedG), nDivisor); 				\
-	Npp32f nCb = __fdiv_rd((nV - nNormalizedB), nDivisor); 				\
+	Npp32f nCr = __fdiv_rn((nV - nNormalizedR), nDivisor); 				\
+	Npp32f nCg = __fdiv_rn((nV - nNormalizedG), nDivisor); 				\
+	Npp32f nCb = __fdiv_rn((nV - nNormalizedB), nDivisor); 				\
 	if (nNormalizedR == nV) 											\
 		nH = nCb - nCg; 												\
 	else if (nNormalizedG == nV) 										\
 		nH = 2.0F + nCr - nCb; 											\
 	else if (nNormalizedB == nV) 										\
 		nH = 4.0F + nCg - nCr; 											\
-	nH = __fmul_rd(nH, 0.166667F); /* 6.0F*/        					\
+	nH = __fmul_rn(nH, 0.166667F); /* 6.0F*/        					\
 	if (nH < 0.0F) 														\
 		nH = nH + 1.0F; 												\
 	H = CLAMP_1(nH); 													\
@@ -200,14 +200,14 @@ do 																							\
 		else 																				\
 		{																					\
 			/* 0.1667F*/																	\
-			nNormalizedH = __fmul_rd(nNormalizedH, 6.0F);  									\
+			nNormalizedH = __fmul_rn(nNormalizedH, 6.0F);  									\
 		}																					\
 	} 																						\
 	Npp32f nI = floorf(nNormalizedH); 														\
 	Npp32f nF = nNormalizedH - nI; 															\
-	Npp32f nM = __fmul_rd(nNormalizedV, (1.0F - nNormalizedS)); 							\
-	Npp32f nN = __fmul_rd(nNormalizedV, (1.0F - __fmul_rd(nNormalizedS, nF) )	); 			\
-	Npp32f nK = __fmul_rd(nNormalizedV, (1.0F - __fmul_rd(nNormalizedS, (1.0F - nF)) ) ); 	\
+	Npp32f nM = __fmul_rn(nNormalizedV, (1.0F - nNormalizedS)); 							\
+	Npp32f nN = __fmul_rn(nNormalizedV, (1.0F - __fmul_rn(nNormalizedS, nF) )	); 			\
+	Npp32f nK = __fmul_rn(nNormalizedV, (1.0F - __fmul_rn(nNormalizedS, (1.0F - nF)) ) ); 	\
 	if (nI == 0.0F) 																		\
 	{ 																						\
 		nR = nNormalizedV; nG = nK; nB = nM; 												\
@@ -232,9 +232,9 @@ do 																							\
 	{ 																						\
 		nR = nNormalizedV; nG = nM; nB = nN; 												\
 	} 																						\
-	R = CLAMP_255(__fmul_rd(nR, 255.0F)); 													\
-	G = CLAMP_255(__fmul_rd(nG, 255.0F)); 													\
-	B = CLAMP_255(__fmul_rd(nB, 255.0F)); 													\
+	R = CLAMP_255(__fmul_rn(nR, 255.0F)); 													\
+	G = CLAMP_255(__fmul_rn(nG, 255.0F)); 													\
+	B = CLAMP_255(__fmul_rn(nB, 255.0F)); 													\
 																							\
 } while(0)
 
@@ -244,7 +244,7 @@ do 																	\
 	Npp32f H, S, V; 												\
 	RGB_TO_HSV(r, g, b, H, S, V); 									\
 	H = CLAMP_1(H + hue); 											\
-	S = CLAMP_1(__fmul_rd(S, saturation)); 							\
+	S = CLAMP_1(__fmul_rn(S, saturation)); 							\
 	HSV_TO_RGB(H, S, V, R, G, B);									\
 } while(0)
 
