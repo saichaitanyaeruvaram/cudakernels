@@ -383,9 +383,7 @@ void testYUV420HueSaturation(int argc, char **argv)
 	{
 		method = argv[0];
 	}
-
-	init_test_values();
-
+		
 	DeviceBuffer y, u, v, Y, U, V;
 
 	int width = 1920;
@@ -1042,6 +1040,7 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 			throw "failed";
 		}
 	}
+	std::cout << "test values done" << std::endl;
 
 	ck(cudaStreamDestroy(stream));
 }
