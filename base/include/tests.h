@@ -31,3 +31,5 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv);
 void getDeviceBuffer(int width, int height, int value, DeviceBuffer& buffer);
 void profile(std::function<void()> compute);
 bool copyAndCheckValue(DeviceBuffer& buffer, int value);
+
+void testOverlayUV();

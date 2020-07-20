@@ -470,3 +470,39 @@ void testMulCNPP()
 
 	ck(cudaStreamDestroy(stream));
 }
+
+void testOverlayUV()
+{
+	DeviceBuffer src1;
+	DeviceBuffer src2;
+	DeviceBuffer dst;
+
+	int width = 1920;
+	int height = 1080;
+
+	getDeviceBuffer(width, height, 148, src1);
+	getDeviceBuffer(width, height, 178, src2);
+	getDeviceBuffer(width, height, 200, dst);
+
+	NppiSize size = { width, height };
+	int step = src1.step();
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+	auto src18u = static_cast<uint8_t *>(src1.data());
+	auto src28u = static_cast<uint8_t *>(src2.data());
+	auto dst8u = static_cast<uint8_t *>(dst.data());
+
+	launchUVOverlayKernel(src18u, src28u, dst8u, 0.5, step, size, stream);
+	cudaStreamSynchronize(stream);
+
+	copyAndCheckValue(dst, 173);
+
+	profile([&]() {
+		launchUVOverlayKernel(src18u, src28u, dst8u, 0.5, step, size, stream);
+		cudaStreamSynchronize(stream);
+	});
+
+	ck(cudaStreamDestroy(stream));	
+}

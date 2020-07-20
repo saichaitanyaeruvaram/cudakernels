@@ -18,6 +18,7 @@ SET(SOURCE
 	src/profile.cpp
 	src/addkernel.cu
 	src/effectsKernel.cu
+	src/overlay.cu
 	src/colorconversion.cpp
 	src/main.cpp
 )

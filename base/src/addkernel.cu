@@ -130,7 +130,11 @@ __global__ void add_32(const Npp8u* src1, const Npp8u* src2, Npp8u* dst, int ste
 
 // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__INTRINSIC__SIMD.html#group__CUDA__MATH__INTRINSIC__SIMD
 
-__global__ void add_4k(const Npp32u* src1, const Npp32u* src2, Npp32u* dst, int step, int width, int height)
+#define CLAMP_1(x) x < 0 ? 0 : (x > 1 ? 1 : x)
+#define CLAMP_255(x) x < 0 ? 0 : (x > 255 ? 255 : x)
+#define CLAMP_int8(x) x < -128 ? -128 : (x > 127 ? 127 : x)
+
+__global__ void add_4k_(const Npp32u* src1, const Npp32u* src2, Npp32u* dst, int step, int width, int height)
 {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -142,6 +146,23 @@ __global__ void add_4k(const Npp32u* src1, const Npp32u* src2, Npp32u* dst, int 
 
 	int offset = y * step + x;
 	dst[offset] = __vaddus4(src1[offset], src2[offset]);
+}
+
+__global__ void add_4k(const uchar4* src1, const uchar4* src2, uchar4* dst, int step, int width, int height)
+{
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if (x >= width || y >= height)
+	{
+		return;
+	}
+
+	int offset = y * step + x;
+	dst[offset].x = CLAMP_255(src1[offset].x + src2[offset].x);
+	dst[offset].y = CLAMP_255(src1[offset].y + src2[offset].y);
+	dst[offset].z = CLAMP_255(src1[offset].z + src2[offset].z);
+	dst[offset].w = CLAMP_255(src1[offset].w + src2[offset].w);
 }
 
 __global__ void addc_4k(const Npp32u* src, const Npp32u value, Npp32u* dst, int step, int width, int height)
@@ -267,7 +288,7 @@ void launchAddKernel(const Npp8u* src1, const Npp8u* src2, Npp8u* dst, int step,
 		dim3 block(32, 32);
 		dim3 grid((width + block.x - 1) / block.x, (size.height + block.y - 1) / block.y);
 
-		add_4k << <grid, block, 0, stream >> > (reinterpret_cast<const uint32_t*>(src1), reinterpret_cast<const uint32_t*>(src2), reinterpret_cast<uint32_t*>(dst), step, width, size.height);
+		add_4k << <grid, block, 0, stream >> > (reinterpret_cast<const uchar4*>(src1), reinterpret_cast<const uchar4*>(src2), reinterpret_cast<uchar4*>(dst), step, width, size.height);
 	}
 }
 
