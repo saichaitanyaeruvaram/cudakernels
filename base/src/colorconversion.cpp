@@ -893,7 +893,7 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 	{
 		auto offset = width * j;
 		int offset_uv = width_2 *(j >> 1);
-		for(auto i = 0; i < width; i++)
+		for(auto i = 0; i < width && equal; i++)
 		{
 			auto curOffset = offset + i;
 			auto curOffset_uv = offset_uv + (i >> 1);			
@@ -903,24 +903,28 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 			YUVHUESATURATIONADJUST(h_y8u[curOffset], h_u8u[curOffset_uv], h_v8u[curOffset_uv], expectedValue_y, expectedValue_u, expectedValue_v, hue, saturation);
 			
 			auto actualValue_y = static_cast<Npp32u>(h_Y8u[curOffset]);
-			auto actualValue_u = static_cast<Npp32u>(h_U8u[curOffset_uv]);
-			auto actualValue_v = static_cast<Npp32u>(h_V8u[curOffset_uv]);
-			std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_y8u[curOffset]) << "<>" << static_cast<Npp32u>(h_u8u[curOffset_uv]) << "<>" << static_cast<Npp32u>(h_v8u[curOffset_uv]) << "<output>" << actualValue_y << "<>" << actualValue_u << "<>" << actualValue_v << std::endl;
-			if (actualValue_y != expectedValue_y)
+			auto actualValue_u = -1;
+			auto actualValue_v = -1;
+			bool equal_y = true;
+			bool equal_u = true;
+			bool equal_v = true;
+			int tolerance = 1;
+			COMPARE_AND_PRINT(expectedValue_y, actualValue_y, tolerance, equal_y, std::to_string(j) + "<>" + std::to_string(i) + "<y>");
+
+			if (i % 2 == 0 && j % 2 == 0)
 			{
-				std::cout << j << "<>" << i << "<ouput_y------------------------------------------------------------------------------------------->" << expectedValue_y << "<>" << actualValue_y << std::endl;
-				equal = false;
+				actualValue_u = static_cast<Npp32u>(h_U8u[curOffset_uv]);
+				actualValue_v = static_cast<Npp32u>(h_V8u[curOffset_uv]);
+				COMPARE_AND_PRINT(expectedValue_u, actualValue_u, tolerance, equal_u, std::to_string(j) + "<>" + std::to_string(i) + "<u>");
+				COMPARE_AND_PRINT(expectedValue_v, actualValue_v, tolerance, equal_v, std::to_string(j) + "<>" + std::to_string(i) + "<v>");
 			}
-			if (actualValue_u != expectedValue_u)
+
+			equal = equal_y && equal_u && equal_v;
+			if (!equal)
 			{
-				std::cout << j << "<>" << i << "<output_u------------------------------------------------------------------------------------------->" << expectedValue_u << "<>" << actualValue_u << std::endl;
-				equal = false;
+				std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_y8u[curOffset]) << "<>" << static_cast<Npp32u>(h_u8u[curOffset_uv]) << "<>" << static_cast<Npp32u>(h_v8u[curOffset_uv]) << "<output>" << actualValue_y << "<>" << actualValue_u << "<>" << actualValue_v << std::endl;
 			}
-			if (actualValue_v != expectedValue_v)
-			{
-				std::cout << j << "<>" << i << "<output_v------------------------------------------------------------------------------------------->" << expectedValue_v << "<>" << actualValue_v << std::endl;
-				equal = false;
-			}
+			
 		}
 		if (!equal)
 		{
