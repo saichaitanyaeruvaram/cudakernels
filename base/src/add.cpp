@@ -471,36 +471,48 @@ void testMulCNPP()
 	ck(cudaStreamDestroy(stream));
 }
 
-void testOverlayUV()
+void testOverlayYUV()
 {
-	DeviceBuffer src1;
-	DeviceBuffer src2;
-	DeviceBuffer dst;
+	DeviceBuffer Y, U, V;
+	DeviceBuffer overlay_y, overlay_u, overlay_v;
+	DeviceBuffer Yout, Uout, Vout;
 
 	int width = 1920;
 	int height = 1080;
 
-	getDeviceBuffer(width, height, 148, src1);
-	getDeviceBuffer(width, height, 178, src2);
-	getDeviceBuffer(width, height, 200, dst);
+	int width_uv = width >> 1;
+	int height_uv = height >> 1;
+
+	getDeviceBuffer(width, height, 30, Y);
+	getDeviceBuffer(width_uv, height_uv, 148, U);
+	getDeviceBuffer(width_uv, height_uv, 118, V);
+	getDeviceBuffer(width, height, 200, overlay_y);
+	getDeviceBuffer(width_uv, height_uv, 178, overlay_u);
+	getDeviceBuffer(width_uv, height_uv, 108, overlay_v);
+	getDeviceBuffer(width, height, 200, Yout);
+	getDeviceBuffer(width_uv, height_uv, 200, Uout);
+	getDeviceBuffer(width_uv, height_uv, 200, Vout);
 
 	NppiSize size = { width, height };
-	int step = src1.step();
+	int step_y = Y.step();
+	int step_uv = U.step();
 
 	cudaStream_t stream;
 	ck(cudaStreamCreate(&stream));
 
-	auto src18u = static_cast<uint8_t *>(src1.data());
-	auto src28u = static_cast<uint8_t *>(src2.data());
-	auto dst8u = static_cast<uint8_t *>(dst.data());
+	const uchar4* src[3] = {static_cast<uchar4 *>(Y.data()), static_cast<uchar4 *>(U.data()), static_cast<uchar4 *>(V.data()),};
+	const uchar4* overlay[3] = {static_cast<uchar4 *>(overlay_y.data()), static_cast<uchar4 *>(overlay_u.data()), static_cast<uchar4 *>(overlay_v.data()),};
+	uchar4* dst[3] = {static_cast<uchar4 *>(Yout.data()), static_cast<uchar4 *>(Uout.data()), static_cast<uchar4 *>(Vout.data()),};
 
-	launchUVOverlayKernel(src18u, src28u, dst8u, 0.5, step, size, stream);
+	launchYUVOverlayKernel(src, overlay, dst, 0.5, step_y, step_uv, size, stream);
 	cudaStreamSynchronize(stream);
 
-	copyAndCheckValue(dst, 173);
+	copyAndCheckValue(Yout, 130);	
+	copyAndCheckValue(Uout, 173);
+	copyAndCheckValue(Vout, 108);
 
 	profile([&]() {
-		launchUVOverlayKernel(src18u, src28u, dst8u, 0.5, step, size, stream);
+		launchYUVOverlayKernel(src, overlay, dst, 0.5, step_y, step_uv, size, stream);
 		cudaStreamSynchronize(stream);
 	});
 

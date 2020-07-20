@@ -20,4 +20,4 @@ void launch_rgbhuesaturation(const Npp8u* r, const Npp8u* g, const Npp8u* b, Npp
 void launch_yuv420huesaturation(const Npp8u* y, const Npp8u* u, const Npp8u* v, Npp8u* Y, Npp8u* U, Npp8u* V, Npp32f brighness, Npp32f contrast, Npp32f hue, Npp32f saturation, int step_y, int step_uv, NppiSize size, cudaStream_t stream, std::string method);
 
 
-void launchUVOverlayKernel(const Npp8u* src1, const Npp8u* src2, Npp8u* dst, Npp32f alpha, int step, NppiSize size, cudaStream_t stream);
+void launchYUVOverlayKernel(const uchar4* src[3], const uchar4* overlay[3], uchar4* dst[3], Npp32f alpha, int step_y, int step_uv, NppiSize size, cudaStream_t stream);

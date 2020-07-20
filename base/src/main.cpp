@@ -70,9 +70,9 @@ int main(int argc, char **argv)
 	{
 		testYUV420HueSaturation_randomvalues(argc - 2, argv + 2);
 	}
-	if (std::string(argv[1]) == "all" || std::string(argv[1]) == "testOverlayUV")
+	if (std::string(argv[1]) == "all" || std::string(argv[1]) == "testOverlayYUV")
 	{
-		testOverlayUV();
+		testOverlayYUV();
 	}
 
 
