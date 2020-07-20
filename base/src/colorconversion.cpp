@@ -472,7 +472,7 @@ void testRGBToHSVNPP()
 	DeviceBuffer hsv, rgb;
 
 	int width = 1920;
-	int row_width = width*3;
+	int row_width = width * 3;
 	int height = 1080;
 
 	getDeviceBuffer(row_width, height, 0, hsv);
@@ -682,9 +682,9 @@ void testYUV42ToRGB_randomvalues(int argc, char **argv)
 	h_R.init(width, height);
 	h_G.init(width, height);
 	h_B.init(width, height);
-	h_y.setAllValues();
-	h_u.setAllValues();
-	h_v.setAllValues();
+	h_y.setAllValues(30);
+	h_u.setAllValues(90);
+	h_v.setAllValues(180);
 	h_y.copyTo(y);
 	h_u.copyTo(u);
 	h_v.copyTo(v);
@@ -756,9 +756,9 @@ void testYUV42ToRGB_randomvalues(int argc, char **argv)
 	y.memset(0);
 	u.memset(0);
 	v.memset(0);
-	h_R.setAllValues();
-	h_G.setAllValues();
-	h_B.setAllValues();
+	h_R.setAllValues(60);
+	h_G.setAllValues(120);
+	h_B.setAllValues(230);
 	h_R.copyTo(R);
 	h_G.copyTo(G);
 	h_B.copyTo(B);
@@ -785,9 +785,9 @@ void testYUV42ToRGB_randomvalues(int argc, char **argv)
 
 			auto actualValue_y = static_cast<Npp32u>(h_y8u[curOffset]);
 			auto actualValue_u = -1;
-			auto actualValue_v = -1;			
+			auto actualValue_v = -1;
 			COMPARE_AND_PRINT(expectedValue_y, actualValue_y, 1, equal, std::to_string(j) + "<>" + std::to_string(i) + "<y>");
-			
+
 			if (i % 2 == 0 && j % 2 == 0)
 			{
 				actualValue_u = static_cast<Npp32u>(h_u8u[curOffset_uv]);
@@ -809,11 +809,122 @@ void testYUV42ToRGB_randomvalues(int argc, char **argv)
 	ck(cudaStreamDestroy(stream));
 }
 
+void testHSVToRGB_randomvalues(int argc, char **argv)
+{
+	std::string method = "";
+	if (argc == 1)
+	{
+		method = argv[0];
+	}
+
+	DeviceBuffer r, g, b, R, G, B;
+
+	int width = 1920;
+	int height = 1080;
+
+	r.init(width, height);
+	g.init(width, height);
+	b.init(width, height);
+	R.init(width, height);
+	G.init(width, height);
+	B.init(width, height);
+
+	auto step = r.step();
+	NppiSize size = { width, height };
+
+	auto r8u = static_cast<uint8_t *>(r.data());
+	auto g8u = static_cast<uint8_t *>(g.data());
+	auto b8u = static_cast<uint8_t *>(b.data());
+	auto R8u = static_cast<uint8_t *>(R.data());
+	auto G8u = static_cast<uint8_t *>(G.data());
+	auto B8u = static_cast<uint8_t *>(B.data());
+
+	cudaStream_t stream;
+	ck(cudaStreamCreate(&stream));
+
+
+	HostBuffer h_r, h_g, h_b, h_R, h_G, h_B;
+	h_r.init(width, height);
+	h_g.init(width, height);
+	h_b.init(width, height);
+	h_R.init(width, height);
+	h_G.init(width, height);
+	h_B.init(width, height);
+	h_r.setAllValues(40);
+	h_g.setAllValues(130);
+	h_b.setAllValues(200);
+	h_r.copyTo(r);
+	h_g.copyTo(g);
+	h_b.copyTo(b);
+
+	R.memset(40);
+	G.memset(130);
+	B.memset(200);
+
+	float hue = 0.1;
+	float saturation = 2;
+	launch_rgbhuesaturation(r8u, g8u, b8u, R8u, G8u, B8u, hue, saturation, step, size, stream, "");
+	ck(cudaStreamSynchronize(stream));
+
+	h_R.copy(R);
+	h_G.copy(G);
+	h_B.copy(B);
+
+	auto h_r8u = static_cast<uint8_t *>(h_r.data());
+	auto h_g8u = static_cast<uint8_t *>(h_g.data());
+	auto h_b8u = static_cast<uint8_t *>(h_b.data());
+	auto h_R8u = static_cast<uint8_t *>(h_R.data());
+	auto h_G8u = static_cast<uint8_t *>(h_G.data());
+	auto h_B8u = static_cast<uint8_t *>(h_B.data());
+
+	bool equal = true;
+	for (auto j = 0; j < height && equal; j++)
+	{
+		auto offset = width * j;
+		for (auto i = 0; i < width && equal; i++)
+		{
+			auto curOffset = offset + i;
+			Npp32u expectedValue_R = 0;
+			Npp32u expectedValue_G = 0;
+			Npp32u expectedValue_B = 0;
+			RGBHUESATURATIONADJUST(h_r8u[curOffset], h_g8u[curOffset], h_b8u[curOffset], expectedValue_R, expectedValue_G, expectedValue_B, hue, saturation);
+
+			auto actualValue_R = static_cast<Npp32u>(h_R8u[curOffset]);
+			auto actualValue_G = static_cast<Npp32u>(h_G8u[curOffset]);
+			auto actualValue_B = static_cast<Npp32u>(h_B8u[curOffset]);
+
+			int tolerance = 0;
+
+			bool equal_r = true;
+			bool equal_g = true;
+			bool equal_b = true;
+			COMPARE_AND_PRINT(expectedValue_R, actualValue_R, tolerance, equal_r, std::to_string(j) + "<>" + std::to_string(i) + "<r>");
+			COMPARE_AND_PRINT(expectedValue_G, actualValue_G, tolerance, equal_g, std::to_string(j) + "<>" + std::to_string(i) + "<g>");
+			COMPARE_AND_PRINT(expectedValue_B, actualValue_B, tolerance, equal_b, std::to_string(j) + "<>" + std::to_string(i) + "<b>");
+
+			equal = equal_r && equal_g && equal_b;
+			if (!equal)
+			{
+				std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_r8u[curOffset]) << "<>" << static_cast<Npp32u>(h_g8u[curOffset]) << "<>" << static_cast<Npp32u>(h_b8u[curOffset]) << "<output>" << actualValue_R << "<>" << actualValue_G << "<>" << actualValue_B << std::endl;
+			}
+		}
+		if (!equal)
+		{
+			throw "failed";
+		}
+	}
+
+
+
+	ck(cudaStreamDestroy(stream));
+}
+
 
 void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 {
 	testYUV42ToRGB_randomvalues(argc, argv);
-	return;
+	testHSVToRGB_randomvalues(argc, argv);
+	//return;
 
 	std::string method = "";
 	if (argc == 1)
@@ -858,23 +969,23 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 	h_Y.init(width, height);
 	h_U.init(width_2, height_2);
 	h_V.init(width_2, height_2);
-	h_y.setAllValues();
-	h_u.setAllValues();
-	h_v.setAllValues();
+	h_y.setAllValues(5);
+	h_u.setAllValues(20);
+	h_v.setAllValues(190);
 	h_y.copyTo(y);
 	h_u.copyTo(u);
 	h_v.copyTo(v);
-	
-	
-	float hue = 0;
-	float saturation = 1;
-	
+
+
+	float hue = 0.2;
+	float saturation = 2;
+
 	Y.memset(0);
 	U.memset(0);
 	V.memset(0);
 
 
-	launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, hue, saturation, step_y, step_uv, size, stream, method);	
+	launch_yuv420huesaturation(y8u, u8u, v8u, Y8u, U8u, V8u, hue, saturation, step_y, step_uv, size, stream, method);
 	ck(cudaStreamSynchronize(stream));
 
 	h_Y.copy(Y);
@@ -889,19 +1000,19 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 	auto h_V8u = static_cast<uint8_t *>(h_V.data());
 
 	bool equal = true;
-	for(auto j = 0; j < height && equal; j++ )
+	for (auto j = 0; j < height && equal; j++)
 	{
 		auto offset = width * j;
-		int offset_uv = width_2 *(j >> 1);
-		for(auto i = 0; i < width && equal; i++)
+		int offset_uv = width_2 * (j >> 1);
+		for (auto i = 0; i < width && equal; i++)
 		{
 			auto curOffset = offset + i;
-			auto curOffset_uv = offset_uv + (i >> 1);			
+			auto curOffset_uv = offset_uv + (i >> 1);
 			Npp32u expectedValue_y = 0;
 			Npp32u expectedValue_u = 0;
 			Npp32u expectedValue_v = 0;
 			YUVHUESATURATIONADJUST(h_y8u[curOffset], h_u8u[curOffset_uv], h_v8u[curOffset_uv], expectedValue_y, expectedValue_u, expectedValue_v, hue, saturation);
-			
+
 			auto actualValue_y = static_cast<Npp32u>(h_Y8u[curOffset]);
 			auto actualValue_u = -1;
 			auto actualValue_v = -1;
@@ -924,7 +1035,7 @@ void testYUV420HueSaturation_randomvalues(int argc, char **argv)
 			{
 				std::cout << j << "<>" << i << "<input>" << static_cast<Npp32u>(h_y8u[curOffset]) << "<>" << static_cast<Npp32u>(h_u8u[curOffset_uv]) << "<>" << static_cast<Npp32u>(h_v8u[curOffset_uv]) << "<output>" << actualValue_y << "<>" << actualValue_u << "<>" << actualValue_v << std::endl;
 			}
-			
+
 		}
 		if (!equal)
 		{

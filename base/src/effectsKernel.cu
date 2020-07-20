@@ -431,8 +431,8 @@ __global__ void yuv420huesaturation(const uchar4* Yold, const uint8_t* Uold, con
 	YUVHUESATURATIONADJUST_Y(Yold[offset].y, u_value, v_value, Y[offset].y, hue, saturation);
 
 	uvOffset += 1;
-	u_value = U[uvOffset] - 128;
-	v_value = V[uvOffset] - 128;
+	u_value = Uold[uvOffset] - 128;
+	v_value = Vold[uvOffset] - 128;
 	if (y % 2 == 0)
 	{		
 		YUVHUESATURATIONADJUST(Yold[offset].z, u_value, v_value, Y[offset].z, U[uvOffset], V[uvOffset], hue, saturation);
